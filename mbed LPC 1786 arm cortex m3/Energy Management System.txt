@@ -1,0 +1,71 @@
+
+#include "mbed.h"
+#include "C12832_lcd.h"
+#include <iostream>            
+
+// Decalare digital output pins for the load, grid,solar panel and battery
+DigitalOut battery_pin(p21);
+DigitalOut grid_pin(p22);
+DigitalOut solar_panel(p23);
+DigitalOut load_pin(p24);
+ 
+//Declare analog inputs to read the current sensor 
+
+AnalogIn battery_current(p15);
+AnalogIn solar_current(p16);
+AnalogIn grid_current(p17);
+AnalogIn load_current(p19);
+
+// Declare variables used in the program
+float solar;
+float battery;
+float grid;
+
+C12832_LCD myLCD;
+ 
+ Ticker Power;
+  
+ int main ()
+ {
+     Power.attach(&switch_power_source,0.1);   
+     myLCD.clr();
+     myLCD.locate(0,0);
+     myLCD.printf("Solar current is %.2f",solar);
+     myLCD.locate(0,10);
+     myLCD.printf("Battery current is %.2f",battery);
+     myLCD.locate(0,20);
+     myLCD.printf("Grid current is %.2f",grid);
+}
+void switch_power_source();
+
+{
+    // read curent sensors 
+    battery=((battery_current.read()*3.859)-2.416)*100;
+    grid=((grid_current.read()*3.859)-2.416)*100;
+    solar=((solar_current.read()*3.859)-2.416)*100;
+    load_current.read();
+ 
+    if(solar>0) // arbitrary value before measurement
+    {
+        solar_pin=1;
+        battery_pin=0;
+        grid_pin=0;
+        
+    }
+    else 
+    {
+        if(battery>=0)
+         {
+            battery=1;
+            grid=0;
+            solar=0;
+        }
+    else 
+    {
+        battery=0;
+        solar=0;
+        grid=1;
+        }
+   }
+        
+}

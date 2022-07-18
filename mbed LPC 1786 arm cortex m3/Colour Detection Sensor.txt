@@ -1,0 +1,163 @@
+#include "mbed.h"
+#include "C12832_lcd.h"
+
+# define SIZE 12
+# define NUM 3
+
+
+//PIN DECLARATIONS
+DigitalOut redLED(p23);         // red led pin 
+DigitalOut greenLED(p24);       // green led pin 
+DigitalOut blueLED(p25);        // blue led pin 
+AnalogIn LDR(p18);              // analog pin to read LDR
+DigitalIn center(p14);       // attach interrupt to joy centre pin
+C12832_LCD myLCD;
+
+Ticker readings;
+
+// VARIABLE DECLARATIONS
+float LDR_samples[SIZE];            // array to store all the measurements of the the 3 LEDs
+float sum=0;                        //variable to store the sum of any three sample
+float Average[NUM];                //array to storre the average of the measurements of the three lEDS  
+bool flag=false;                   // FLAG TO CHECK IF THE FLAG IS SET
+float blueSD;
+float redSD;
+float greenSD;
+
+float SD_sum;
+
+void MEASUREMENT_ISR();
+
+int main() 
+{
+       // center.rise(&MEASUREMENT_ISR);           // INTERUPT TO CALL THE MEASUREMENT FUNCTION
+        readings.attach(&MEASUREMENT_ISR,1);
+       while(1)
+       {
+        if(flag==1)
+        {
+                myLCD.cls();
+                myLCD.locate(0,0);
+                myLCD.printf("RED = %.2f \t rSD=%.2f",Average[0],redSD );
+                printf("\r\n RED Avg is: %.2f \r\n",Average[0] );
+                Average[0]=0;
+                
+                myLCD.locate(0,9);
+                myLCD.printf("BLUE = %.2f \t bSD=%.2f",Average[1],blueSD );
+                printf("\r\n BLUE Avg is: %.2f \r\n ",Average[1]) ;
+                Average[1]=0;
+                
+                myLCD.locate(0,18);
+                myLCD.printf("GRN = %.2f \t gSD =%.2f",Average[2],greenSD );
+                printf(" \r\n Green Avg is %.2f \r\n",Average[2]);
+                Average[2]=0;               
+                wait(1);           
+        }
+    }    
+}
+
+void MEASUREMENT_ISR()
+    
+{
+        /********************* RED MEASUREMENT *******************************/
+         redLED=0; 
+         greenLED=1;
+         blueLED=1;
+         
+         wait(0.01);                               // wait 0.01s before taking the first reading
+         LDR_samples[0]=(LDR.read());             // take first reading
+          wait(0.01);                             // waite for another 0.01 s before taking the next reading
+         LDR_samples[1]=(LDR.read());             // take second reading
+         wait(0.03);                              // wait 0.03 and take the ne
+         LDR_samples[2]=(LDR.read());
+         wait(0.03);
+              
+         /**************** CALCULATE AVERAGE FOR RED***************************/
+         
+         for(int counter=0;counter<3;counter++) 
+         {  
+            sum = sum + LDR_samples[counter];                        //temporary sum variable used to hold the sum of readings for each LED
+            Average[0]=sum/3.0f;                                     // varibale to store the average of red measurements
+         }
+         sum=0;
+           
+           /*************** CALCULATION FOR STANDARD DEVIATION RED*****************************/
+        for(int x=0;x<3;x++)                                                     // x is a variable used to access the array in the for loop to alculate the standard deviatiom
+        {
+            LDR_samples[x]=pow((LDR_samples[x]-Average[0]),2);                  //store the diff of temperature and average in a temporary array variable , temporary_array
+            SD_sum=SD_sum + LDR_samples[x];                                      //add all the reults stored in the temporary array and store them in a variable called sum
+        }
+        redSD=sqrt(SD_sum/2);                 
+         SD_sum=0;    
+ 
+         
+        /********************* BLUE MEASUREMENT PROCESS- ***********************/
+         
+         redLED=1;              //turn on BLUE LED and turn of the RED and green
+         greenLED=1;
+         blueLED=0;
+         
+         wait(0.01);                                     // wait 0.01s before taking the first reading
+         LDR_samples[3]=(LDR.read());                    // take first reading
+         wait(0.01);                                     // waite for another 0.01 s before taking the next reading
+         LDR_samples[4]=(LDR.read());                    // take second reading
+         wait(0.03);                                     // wait 0.03 and take the ne
+         LDR_samples[5]=(LDR.read());
+         wait(0.03);
+         
+         /******************** CALCULATE THE AVERAGE FOR BLUE******************************************/
+         
+         for(int counter=3;counter<6;counter++) 
+         {  
+            sum = sum + LDR_samples[counter];
+            Average[1]=sum/3.0f;                 // STORE THE AVERAGE OF THE BLUE MEASUREMENTS
+         }      
+         sum=0;
+         
+            /*************** CALCULATION FOR STANDARD DEVIATION - BLUE*****************************/
+        for(int x=3;x<6;x++)                                                     // x is a variable used to access the array in the for loop to alculate the standard deviatiom
+        {
+            LDR_samples[x]=pow((LDR_samples[x]-Average[0]),2);                    //store the diff of temperature and average in a temporary array variable , temporary_array
+            SD_sum=SD_sum + LDR_samples[x];                                       //add all the reults stored in the temporary array and store them in a variable called sum
+        }
+        blueSD=sqrt(SD_sum/2);                 
+        SD_sum=0; 
+              
+         
+         
+         /************************* GREEN MEASUREMENT PROCESS ***********************************/
+        
+         redLED=1;                               // turn on GREEN LED and turn ofF the RED and BLUE
+         greenLED=0;
+         blueLED=1;
+         
+         wait(0.01);                            // wait 0.01s before taking the first reading
+         LDR_samples[6]=(LDR.read());           // take first reading
+         wait(0.01);                            // waite for another 0.01 s before taking the next reading
+         LDR_samples[7]=(LDR.read());           // take second reading
+         wait(0.03);                            // wait 0.03 and take the ne
+         LDR_samples[8]=(LDR.read());
+         wait(0.03);
+         
+         /****************** CALCULATE AVERAGE FOR GREEN ******************/
+         
+         for(int counter=6;counter<9;counter++)                 // counter varibale is used to access the elements of the array
+         {  
+            sum = sum + LDR_samples[counter];
+            Average[2]=sum/3.0f;
+         }      
+         
+         sum=0;
+        
+         /*************** CALCULATION FOR STANDARD DEVIATION - GREEN *****************************/
+        for(int x=6;x<9;x++)                                                     // x is a variable used to access the array in the for loop to alculate the standard deviatiom
+        {
+            LDR_samples[x]=pow((LDR_samples[x]-Average[0]),2);                    //store the diff of temperature and average in a temporary array variable , temporary_array
+            SD_sum=SD_sum + LDR_samples[x];                                       //add all the reults stored in the temporary array and store them in a variable called sum
+        }
+        greenSD=sqrt(SD_sum/2);                 
+       SD_sum=0;  
+       
+    flag=1;       
+        
+}

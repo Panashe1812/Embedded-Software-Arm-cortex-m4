@@ -1,0 +1,120 @@
+// header files
+
+#include "mbed.h"
+#include "LM75B.h"
+#include "C12832_lcd.h"
+# define base_temp 15
+
+// function prototypes 
+
+void set_temperature();                     // function that computes the temperature set by the user base 
+void display_temperature();
+void window_status();
+
+Ticker timer;
+Ticker my_timer;
+
+
+// Pin declarations
+
+LM75B TempSensor(p28,p27);              // instantiate an TempSensor as an object of the class LM7B
+DigitalOut myled(LED1);
+C12832_LCD myLCD;
+AnalogIn pot1(p19);                    // potentimoeter 1
+
+InterruptIn left_joy(p13);           // attach interupt to the left joysick
+InterruptIn right_joy(p16);          // attach interupt to the right joysick
+InterruptIn centre_joy(p14);         // attach interupt to the centre joysick
+InterruptIn up_joy(p15);             // attach interupt to the  joysick
+InterruptIn down_joy(p12);            // attach interupt to the left joysick
+
+DigitalOut red_led(p23);
+DigitalOut green_led(p24);
+DigitalOut blue_led(p25);
+
+ float room_temp;                       // variable to store reading from temperature sensor 
+
+int main() 
+{   
+    myLCD.cls();                                            //clear the lcd screen
+    timer.attach(&display_temperature,5);                   // call the fumction to display temp evey 5 seconds
+    my_timer.attach(&set_temperature,1);
+    
+    left_joy.rise(&window_status);                          // attach an interrupt to pin named joy_rise whenever the joy is pressed
+    right_joy.rise(&window_status);
+    up_joy.rise(&window_status);
+    down_joy.rise(&window_status);
+    centre_joy.rise(&window_status);
+    
+   
+}
+
+void display_temperature()                                      //function that dispays the temperature on the lcd when called by ticker 
+{
+    room_temp= TempSensor.read();                                  
+    myLCD.locate(0,0);                                          // set up the screen for printing at position 0,0 which the origin
+    myLCD.printf("Temperature is: %.1f      ",room_temp);           // print to screen
+   
+}
+
+void set_temperature()                                                 // function that reads the user input from the potentiometer and sets the new optimum temp required 
+
+{                                                              
+    float set_temp = base_temp + (pot1.read()/0.04);                // take reading from the potentiometer 
+    myLCD.locate(0,10);                                             // put cursor on the second line of the screen
+    myLCD.printf("Otimum temp is now: %.1f ",set_temp);             // display the optimum temperature required by the user                                                //temporarily and remove it from the screen 3 seconds later
+    //myLCD.locate(0,10); 
+    //myLCD.cls();
+    
+    
+    if( room_temp > set_temp + 2 )                                          // turn red LED on when room temperature is greater than optimum temperature
+    {
+        red_led = 0;
+        green_led = 1;
+        blue_led = 1;
+       
+    } 
+    else if (room_temp  >  set_temp - 2 && room_temp < set_temp + 2)
+    { 
+        green_led = 0;
+        red_led = 1;
+        blue_led = 1;
+    }
+    else if (room_temp < set_temp - 2)
+    { 
+        blue_led = 0;
+        green_led = 1;
+        red_led = 1;
+    }
+}
+
+void window_status()                        // fucnction that checks whether a window is open
+
+{   
+    myLCD.locate(0,20);
+   
+   if (left_joy==1)
+   {
+    myLCD.printf("Left window is open! ");
+    
+    }
+    else if(right_joy==1)
+    {
+        myLCD.printf("right window is open! ");
+    }
+    
+    else if(down_joy==1)
+    {
+        myLCD.printf("down window is open! ");
+    }
+    else if(up_joy==1)
+    {
+        myLCD.printf("up window is open! ");
+    }
+    else if(centre_joy==1)
+    {
+        myLCD.printf("centre window is open! ");
+    }
+        myLCD.cls();
+   
+}
